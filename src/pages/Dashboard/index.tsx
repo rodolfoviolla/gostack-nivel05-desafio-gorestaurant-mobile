@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Image, ScrollView } from 'react-native';
-
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
+
 import Logo from '../../assets/logo-header.png';
 import SearchInput from '../../components/SearchInput';
 
@@ -43,6 +43,11 @@ interface Category {
   image_url: string;
 }
 
+interface SearchParams {
+  category_like?: number;
+  name_like?: string;
+}
+
 const Dashboard: React.FC = () => {
   const [foods, setFoods] = useState<Food[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -55,19 +60,42 @@ const Dashboard: React.FC = () => {
 
   async function handleNavigate(id: number): Promise<void> {
     // Navigate do ProductDetails page
+    navigation.navigate('FoodDetails', { id });
   }
 
   useEffect(() => {
     async function loadFoods(): Promise<void> {
       // Load Foods from API
+      const params = {} as SearchParams;
+
+      if (selectedCategory) {
+        params.category_like = selectedCategory;
+      }
+
+      if (searchValue) {
+        params.name_like = searchValue;
+      }
+
+      const response = await api.get<Food[]>('/foods', { params });
+
+      const newFoods = response.data.map(food => {
+        const formattedPrice = formatValue(food.price);
+
+        return { ...food, formattedPrice };
+      });
+
+      setFoods(newFoods);
     }
 
     loadFoods();
-  }, [selectedCategory, searchValue]);
+  }, [selectedCategory, searchValue, categories]);
 
   useEffect(() => {
     async function loadCategories(): Promise<void> {
       // Load categories from API
+      const response = await api.get<Category[]>('/categories');
+
+      setCategories(response.data);
     }
 
     loadCategories();
@@ -75,6 +103,11 @@ const Dashboard: React.FC = () => {
 
   function handleSelectCategory(id: number): void {
     // Select / deselect category
+    if (selectedCategory === id) {
+      setSelectedCategory(undefined);
+    } else {
+      setSelectedCategory(id);
+    }
   }
 
   return (
